@@ -2,54 +2,22 @@ version: 0.2
 
 env:
   variables:
-    NODE_ENV: "production"
-  parameter-store:
-    # Add any secrets from AWS Parameter Store here if needed
-    # EXAMPLE_SECRET: /path/to/secret
+    # Define your standard environment variables here
+    ENV_NAME: "dev"
+    NODE_ENV: "development"
 
 phases:
-  pre_build:
-    commands:
-      - echo "Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/craftivo
-      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - IMAGE_TAG=${COMMIT_HASH:=latest}
   install:
     runtime-versions:
       nodejs: 18
-      docker: 20
     commands:
-      - echo "Installing dependencies..."
       - npm install
   build:
     commands:
-      - echo "Build started on $(date)"
-      - echo "Running tests..."
-      - npm test -- --coverage --watchAll=false || true
-      - echo "Building application..."
       - npm run build
-      - echo "Building Docker image on $(date)"
-      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
-      - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
-  post_build:
-    commands:
-      - echo "Build completed on $(date)"
-      - echo "Pushing Docker image to ECR..."
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - docker push $REPOSITORY_URI:latest
-      - echo "Writing image definitions file..."
-      - printf '[{"name":"craftivo","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
-
 artifacts:
   files:
-    - imagedefinitions.json
-    - dist/**/*
-  name: BuildArtifact
-
-cache:
-  paths:
-    - '/root/.npm/**/*'
+    - '**/*'
     - 'node_modules/**/*'
 
 reports:
